@@ -3,8 +3,16 @@ pacientes_db = []
 def mostrar_menu():
     print("\n🦷 DentalManager")
     print("1. Agregar nuevo paciente")
-    print("2. Mostrar todos los pacientes")
-    print("3. Salir")
+    print("2. Buscar paciente y gestionar")
+    print("3. Mostrar todos los pacientes")
+    print("4. Salir")
+
+def mostrar_submenu_paciente(nombre_paciente):
+    print(f"\nGestionando a: {nombre_paciente}")
+    print("1. Ver ficha completa del paciente")
+    print("2. Agregar tratamiento")
+    print("3. Registrar pago")
+    print("4. Volver al menú principal")
 
 def buscar_paciente(rut):
     for paciente in pacientes_db:
@@ -15,58 +23,109 @@ def buscar_paciente(rut):
 def agregar_paciente():
     print("\n1. Agregar Nuevo Paciente")
     rut = input("Ingrese RUT (ej. 12345678-9): ").strip()
-    
     if buscar_paciente(rut) is not None:
         print(f"Error: El RUT {rut} ya está registrado.")
         return
-
     nombre = input("Ingrese nombre completo: ").strip()
     try:
         edad = int(input("Ingrese edad: "))
     except ValueError:
         print("Error: La edad debe ser un número.")
         return
-        
     telefono = input("Ingrese teléfono (ej. +569...): ").strip()
     tiene_prevision_input = input("¿Tiene previsión de salud? (s/n): ").lower().strip()
     es_paciente_activo = (tiene_prevision_input == 's')
-
     nuevo_paciente = {
-        "rut": rut,
-        "nombre": nombre,
-        "edad": edad,
-        "telefono": telefono,
-        "activo": es_paciente_activo,
-        "saldo_pendiente": 0.0,
-        "tratamientos": []
+        "rut": rut, "nombre": nombre, "edad": edad, "telefono": telefono,
+        "activo": es_paciente_activo, "saldo_pendiente": 0.0, "tratamientos": []
     }
-
     pacientes_db.append(nuevo_paciente)
-    print(f"¡Paciente {nombre} agregado con éxito!")
+    print(f"¡Paciente {nombre} (RUT: {rut}) agregado con éxito!")
 
 def mostrar_todos_pacientes():
-    print("\nLista de Todos los Pacientes")
+    print("\n3. Lista de Todos los Pacientes")
     if not pacientes_db:
-        print("No hay pacientes registrados.")
+        print("No hay pacientes registrados en el sistema.")
         return
+    print(f"Total de pacientes: {len(pacientes_db)}")
     for paciente in pacientes_db:
         estado = "Activo" if paciente["activo"] else "Inactivo"
-        print(f"RUT: {paciente['rut']} | Nombre: {paciente['nombre']} | Estado: {estado}")
+        print(f"RUT: {paciente['rut']} | Nombre: {paciente['nombre']} | Saldo: ${paciente['saldo_pendiente']:,.0f} | Estado: {estado}")
+
+def ver_ficha_paciente(paciente):
+    print(f"\n--- Ficha del Paciente: {paciente['nombre']} ---")
+    print(f"RUT: {paciente['rut']} | Edad: {paciente['edad']} años | Tel: {paciente['telefono']}")
+    estado = "Activo" if paciente["activo"] else "Inactivo (Sin previsión)"
+    print(f"Estado: {estado} | Saldo Pendiente: ${paciente['saldo_pendiente']:,.0f}")
+    print("\nTratamientos")
+    if not paciente["tratamientos"]:
+        print("No hay tratamientos registrados para este paciente.")
+    else:
+        for i, tratamiento in enumerate(paciente["tratamientos"], 1):
+            print(f"  {i}. {tratamiento['descripcion']} (Costo: ${tratamiento['costo']:,.0f} - {tratamiento['estado']})")
+
+def agregar_tratamiento(paciente):
+    print("\n Agregar Tratamiento")
+    descripcion = input("Descripción del tratamiento: ").strip()
+    try:
+        costo = float(input("Costo del tratamiento: "))
+    except ValueError:
+        print("Error: El costo debe ser un valor numérico.")
+        return
+    if costo < 0:
+        print("Error: El costo no puede ser negativo.")
+        return
+    nuevo_tratamiento = {"descripcion": descripcion, "costo": costo, "estado": "Pendiente de pago"}
+    paciente["tratamientos"].append(nuevo_tratamiento)
+    paciente["saldo_pendiente"] += costo
+    print(f"Tratamiento agregado. Nuevo saldo: ${paciente['saldo_pendiente']:,.0f}")
+
+def registrar_pago(paciente):
+    print("\nRegistrar Pago")
+    saldo_actual = paciente["saldo_pendiente"]
+    if saldo_actual <= 0:
+        print(f"El paciente {paciente['nombre']} no tiene saldo pendiente.")
+        return
+    print(f"Saldo pendiente actual: ${saldo_actual:,.0f}")
+    try:
+        monto_pago = float(input("Ingrese monto a pagar: "))
+    except ValueError:
+        print("Error: El monto debe ser numérico.")
+        return
+    if monto_pago <= 0 or monto_pago > saldo_actual:
+        print("Error: Monto inválido (negativo o excede la deuda).")
+    else:
+        paciente["saldo_pendiente"] -= monto_pago
+        print(f"¡Pago registrado! Saldo restante: ${paciente['saldo_pendiente']:,.0f}")
+        if paciente["saldo_pendiente"] == 0:
+            for t in paciente["tratamientos"]: t["estado"] = "Pagado"
+            print("Tratamientos marcados como Pagados.")
+
+def gestionar_paciente(paciente):
+    while True:
+        mostrar_submenu_paciente(paciente["nombre"])
+        op = input("Opción (1-4): ").strip()
+        if op == '1': ver_ficha_paciente(paciente)
+        elif op == '2': agregar_tratamiento(paciente)
+        elif op == '3': registrar_pago(paciente)
+        elif op == '4': break
+        else: print("Opción no válida.")
 
 def main():
     while True:
         mostrar_menu()
-        opcion = input("Seleccione una opción: ").strip()
-        
-        if opcion == '1':
-            agregar_paciente()
-        elif opcion == '2':
-            mostrar_todos_pacientes()
-        elif opcion == '3':
-            print("Saliendo...")
+        op = input("Opción (1-4): ").strip()
+        if op == '1': agregar_paciente()
+        elif op == '2':
+            rut = input("Ingrese RUT del paciente: ").strip()
+            p = buscar_paciente(rut)
+            if p: gestionar_paciente(p)
+            else: print("Paciente no encontrado.")
+        elif op == '3': mostrar_todos_pacientes()
+        elif op == '4': 
+            print("Saliendo...") 
             break
-        else:
-            print("Opción no válida.")
+        else: print("Opción no válida.")
 
 if __name__ == "__main__":
     main()
